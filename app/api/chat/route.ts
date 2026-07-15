@@ -30,8 +30,11 @@ async function callOpenRouter(
   const key = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2
   const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2
 
+  console.log('[v0] OpenRouter check - has key:', !!key, 'has groqKey:', !!groqKey)
+
   // Prefer OpenRouter free Llama 3; fall back to Groq if only that is set.
   if (key) {
+    console.log('[v0] Using OpenRouter with Llama 3.3-70b')
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -47,13 +50,17 @@ async function callOpenRouter(
     })
     if (!res.ok) {
       const detail = await res.text()
+      console.log('[v0] OpenRouter error response:', res.status, detail.slice(0, 200))
       throw new Error(`OpenRouter ${res.status}: ${detail.slice(0, 200)}`)
     }
     const data = await res.json()
-    return data.choices?.[0]?.message?.content ?? 'No response generated.'
+    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
+    console.log('[v0] OpenRouter success - response length:', content.length)
+    return content
   }
 
   if (groqKey) {
+    console.log('[v0] Using Groq with Llama 3.3-70b')
     const res = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -70,10 +77,13 @@ async function callOpenRouter(
     )
     if (!res.ok) {
       const detail = await res.text()
+      console.log('[v0] Groq error response:', res.status, detail.slice(0, 200))
       throw new Error(`Groq ${res.status}: ${detail.slice(0, 200)}`)
     }
     const data = await res.json()
-    return data.choices?.[0]?.message?.content ?? 'No response generated.'
+    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
+    console.log('[v0] Groq success - response length:', content.length)
+    return content
   }
 
   throw new Error('missing-key:OpenRouter or Groq')
@@ -88,6 +98,8 @@ async function callGemini(
 ): Promise<string> {
   const key = process.env.Google_Gemini_API_KEY
   if (!key) throw new Error('missing-key:Gemini API key is not configured yet. Add it in Project Settings to enable live responses.')
+
+  console.log('[v0] Using Gemini 1.5 Flash - has attachment:', !!attachment)
 
   const contents = messages.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
@@ -104,6 +116,7 @@ async function callGemini(
       last.parts.push({
         inlineData: { mimeType: attachment.mimeType, data: base64 },
       })
+      console.log('[v0] Attachment added to Gemini request - mimeType:', attachment.mimeType, 'size:', base64.length)
     }
   }
 
@@ -120,12 +133,14 @@ async function callGemini(
   )
   if (!res.ok) {
     const detail = await res.text()
+    console.log('[v0] Gemini error response:', res.status, detail.slice(0, 200))
     throw new Error(`Gemini ${res.status}: ${detail.slice(0, 200)}`)
   }
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts
     ?.map((p: { text?: string }) => p.text ?? '')
     .join('')
+  console.log('[v0] Gemini success - response length:', text?.length)
   return text || 'No response generated.'
 }
 
@@ -149,16 +164,22 @@ export async function POST(req: Request) {
     const system = PERSONA_SYSTEM_PROMPTS[persona] ?? PERSONA_SYSTEM_PROMPTS.general
     const provider = PERSONA_PROVIDER[persona] ?? 'openrouter'
 
+    console.log('[v0] Chat request:', { persona, provider, hasAttachment: !!attachment })
+
     let content: string
     if (provider === 'gemini') {
+      console.log('[v0] Routing to Gemini (Job Hunter / Developer Mode)')
       content = await callGemini(system, messages, attachment)
     } else {
+      console.log('[v0] Routing to OpenRouter/Groq (Emotional Support, Naija Vibes, Brutal Honesty, General)')
       content = await callOpenRouter(system, messages)
     }
 
+    console.log('[v0] Response generated successfully, length:', content?.length)
     return NextResponse.json({ content })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
+    console.log('[v0] Chat route error:', message)
     if (message.startsWith('missing-key:')) {
       const which = message.split(':')[1]
       return NextResponse.json(
@@ -169,7 +190,6 @@ export async function POST(req: Request) {
         { status: 503 },
       )
     }
-    console.log('[v0] chat route error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

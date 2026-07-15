@@ -14,6 +14,7 @@ export async function POST(req: Request) {
 
     const token = process.env.HUGGINGFACE_ACCESS_TOKEN || process.env.HUGGINGFACE_ACCESS_TOKEN_2
     if (!token) {
+      console.log('[v0] Hugging Face token not found - missing environment variable')
       return NextResponse.json(
         {
           error:
@@ -23,6 +24,8 @@ export async function POST(req: Request) {
         { status: 503 },
       )
     }
+
+    console.log('[v0] Image generation request - model:', HF_MODEL, 'prompt length:', prompt.length)
 
     const res = await fetch(
       `https://api-inference.huggingface.co/models/${HF_MODEL}`,
@@ -42,6 +45,7 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const detail = await res.text()
+      console.log('[v0] Hugging Face error response:', res.status, detail.slice(0, 200))
       // Model still loading is a common, retryable HF state.
       if (res.status === 503) {
         return NextResponse.json(
@@ -54,6 +58,7 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await res.arrayBuffer())
     const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
+    console.log('[v0] Image generation success - buffer size:', buffer.length)
     return NextResponse.json({ image: dataUrl })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
