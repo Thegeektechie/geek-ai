@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Describe the image you want.' }, { status: 400 })
     }
 
-    const token = process.env.HUGGINGFACE_ACCESS_TOKEN
+    const token = process.env.HUGGINGFACE_ACCESS_TOKEN || process.env.HUGGINGFACE_ACCESS_TOKEN_2
     if (!token) {
       return NextResponse.json(
         {

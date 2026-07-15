@@ -27,8 +27,8 @@ async function callOpenRouter(
   system: string,
   messages: IncomingMessage[],
 ): Promise<string> {
-  const key = process.env.OPENROUTER_API_KEY
-  const groqKey = process.env.GROQ_API_KEY
+  const key = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2
+  const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2
 
   // Prefer OpenRouter free Llama 3; fall back to Groq if only that is set.
   if (key) {
@@ -87,7 +87,7 @@ async function callGemini(
   attachment?: ChatRequest['attachment'],
 ): Promise<string> {
   const key = process.env.Google_Gemini_API_KEY
-  if (!key) throw new Error('missing-key:Gemini')
+  if (!key) throw new Error('missing-key:Gemini API key is not configured yet. Add it in Project Settings to enable live responses.')
 
   const contents = messages.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
