@@ -105,7 +105,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             newChat()
             onNavigate?.()
           }}
-          className="flex w-full items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-90"
+          style={{ backgroundColor: 'var(--ga-accent)', color: 'var(--ga-accent-fg)' }}
         >
           <MessageSquarePlus className="size-4" />
           New chat
@@ -186,11 +187,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* usage + controls */}
-      <div className="border-t border-sidebar-border p-3">
-        <div className="mb-3 rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3">
+      <div className="p-3" style={{ borderTopWidth: '1px', borderTopColor: 'var(--ga-accent)' }}>
+        <div className="mb-3 rounded-xl bg-sidebar-accent/40 p-3" style={{ borderWidth: '1px', borderColor: 'var(--ga-accent)' }}>
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 font-medium text-sidebar-foreground">
-              <Sparkles className="size-3.5 text-primary" />
+              <Sparkles className="size-3.5" style={{ color: 'var(--ga-accent)' }} />
               Chats remaining
             </span>
             <span className="font-mono text-sidebar-foreground">
@@ -199,8 +200,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
+              className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, backgroundColor: 'var(--ga-accent)' }}
             />
           </div>
         </div>

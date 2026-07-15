@@ -100,7 +100,7 @@ export function ChatInput() {
   }
 
   return (
-    <div className="border-t border-border bg-background/80 px-4 py-4 backdrop-blur">
+    <div className="border-t px-4 py-4 backdrop-blur" style={{ borderColor: 'var(--ga-accent)', backgroundColor: 'var(--colors-background / 0.8)' }}>
       <div className="mx-auto max-w-3xl">
         {persona === 'job' && (
           <p className="mb-2 px-1 text-xs text-muted-foreground">
@@ -122,7 +122,7 @@ export function ChatInput() {
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+        <div className="flex items-end gap-2 rounded-2xl bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/30 transition-all" style={{ borderWidth: '1px', borderColor: 'var(--ga-accent)' }}>
           <input
             ref={fileRef}
             type="file"
@@ -156,15 +156,16 @@ export function ChatInput() {
             disabled={!value.trim() && !attachment}
             className={cn(
               'grid size-9 shrink-0 place-items-center rounded-xl text-primary-foreground transition-all',
-              'bg-primary hover:bg-primary/90 disabled:opacity-40',
+              'hover:opacity-90 disabled:opacity-40',
             )}
+            style={{ backgroundColor: 'var(--ga-accent)', color: 'var(--ga-accent-fg)' }}
             aria-label="Send message"
           >
             <ArrowUp className="size-5" />
           </button>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Geek-AI uses your selected persona to route requests to the most suitable model provider.
+          Geek-AI can make mistakes.
         </p>
       </div>
     </div>

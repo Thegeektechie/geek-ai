@@ -69,7 +69,7 @@ function ChatMain({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       {/* header */}
-      <header className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur">
+      <header className="flex items-center gap-3 bg-background/80 px-4 py-3 backdrop-blur" style={{ borderBottomWidth: '1px', borderBottomColor: 'var(--ga-accent)' }}>
         <button
           type="button"
           onClick={onOpenSidebar}
