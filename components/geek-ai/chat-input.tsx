@@ -164,7 +164,7 @@ export function ChatInput() {
           </button>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Geek-AI uses your selected persona to route requests to the most suitable model provider.
+          Geek-AI can make mistakes.
         </p>
       </div>
     </div>
