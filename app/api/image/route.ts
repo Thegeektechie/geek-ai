@@ -45,15 +45,21 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const detail = await res.text()
-      console.log('[v0] Hugging Face error response:', res.status, detail.slice(0, 200))
-      // Model still loading is a common, retryable HF state.
-      if (res.status === 503) {
+      console.log('[v0] Hugging Face error response:', res.status, detail.slice(0, 100))
+      
+      // Model still loading or service busy - common, retryable state
+      if (res.status === 503 || res.status === 429) {
         return NextResponse.json(
-          { error: 'The image model is warming up. Try again in a few seconds.' },
+          { 
+            error: 'Image service is experiencing high traffic. Please try again in a few moments.',
+            isHighTraffic: true,
+          },
           { status: 503 },
         )
       }
-      throw new Error(`HuggingFace ${res.status}: ${detail.slice(0, 200)}`)
+      
+      // Generic failure
+      throw new Error('image-generation-failed')
     }
 
     const buffer = Buffer.from(await res.arrayBuffer())
@@ -63,6 +69,14 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.log('[v0] image route error:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    
+    // Don't expose technical errors to user
+    return NextResponse.json(
+      { 
+        error: 'Image service is experiencing high traffic. Please try again in a few moments.',
+        isHighTraffic: true,
+      },
+      { status: 503 },
+    )
   }
 }

@@ -21,20 +21,17 @@ interface ChatRequest {
   attachment?: { name: string; dataUrl: string; mimeType: string } | null
 }
 
-/* ------------------------------- OpenRouter ------------------------------- */
+/* -------------------------------- Utilities ------------------------------- */
 
-async function callOpenRouter(
+async function tryGroq(
   system: string,
   messages: IncomingMessage[],
-): Promise<string> {
-  const key = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2
+): Promise<string | null> {
   const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2
+  if (!groqKey) return null
 
-  console.log('[v0] OpenRouter check - has key:', !!key, 'has groqKey:', !!groqKey)
-
-  // Prefer Groq for reliability (no rate limiting); fall back to OpenRouter if needed
-  if (groqKey) {
-    console.log('[v0] Using Groq with Llama 3.3-70b-versatile')
+  try {
+    console.log('[v0] Trying Groq with Llama 3.3-70b-versatile')
     const res = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -51,17 +48,31 @@ async function callOpenRouter(
     )
     if (!res.ok) {
       const detail = await res.text()
-      console.log('[v0] Groq error response:', res.status, detail.slice(0, 200))
-      throw new Error(`Groq ${res.status}: ${detail.slice(0, 200)}`)
+      console.log('[v0] Groq failed:', res.status, detail.slice(0, 100))
+      return null
     }
     const data = await res.json()
-    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
-    console.log('[v0] Groq success - response length:', content.length)
-    return content
+    const content = data.choices?.[0]?.message?.content
+    if (content) {
+      console.log('[v0] Groq success - response length:', content.length)
+      return content
+    }
+    return null
+  } catch (err) {
+    console.log('[v0] Groq error:', err instanceof Error ? err.message : 'Unknown error')
+    return null
   }
+}
 
-  if (key) {
-    console.log('[v0] Using OpenRouter with Llama 3.3-70b')
+async function tryOpenRouter(
+  system: string,
+  messages: IncomingMessage[],
+): Promise<string | null> {
+  const key = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2
+  if (!key) return null
+
+  try {
+    console.log('[v0] Trying OpenRouter with Llama 3.3-70b')
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -77,71 +88,125 @@ async function callOpenRouter(
     })
     if (!res.ok) {
       const detail = await res.text()
-      console.log('[v0] OpenRouter error response:', res.status, detail.slice(0, 200))
-      throw new Error(`OpenRouter ${res.status}: ${detail.slice(0, 200)}`)
+      console.log('[v0] OpenRouter failed:', res.status, detail.slice(0, 100))
+      return null
     }
     const data = await res.json()
-    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
-    console.log('[v0] OpenRouter success - response length:', content.length)
-    return content
+    const content = data.choices?.[0]?.message?.content
+    if (content) {
+      console.log('[v0] OpenRouter success - response length:', content.length)
+      return content
+    }
+    return null
+  } catch (err) {
+    console.log('[v0] OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
+    return null
   }
+}
 
-  throw new Error('missing-key:OpenRouter or Groq')
+/* ------------------------------- OpenRouter ------------------------------- */
+
+async function callOpenRouter(
+  system: string,
+  messages: IncomingMessage[],
+): Promise<string> {
+  // Try providers in order: Groq first, then OpenRouter
+  const content = await tryGroq(system, messages)
+  if (content) return content
+
+  const content2 = await tryOpenRouter(system, messages)
+  if (content2) return content2
+
+  // Both failed
+  throw new Error('all-providers-failed')
 }
 
 /* --------------------------------- Gemini --------------------------------- */
+
+async function tryGemini(
+  system: string,
+  messages: IncomingMessage[],
+  attachment?: ChatRequest['attachment'],
+): Promise<string | null> {
+  const key = process.env.Google_Gemini_API_KEY
+  if (!key) return null
+
+  try {
+    console.log('[v0] Trying Gemini 1.5 Flash - has attachment:', !!attachment)
+
+    const contents = messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }] as Array<
+        { text: string } | { inlineData: { mimeType: string; data: string } }
+      >,
+    }))
+
+    // Attach the resume/file to the latest user turn for Gemini to read.
+    if (attachment?.dataUrl) {
+      const base64 = attachment.dataUrl.split(',')[1] ?? ''
+      const last = contents[contents.length - 1]
+      if (last && base64) {
+        last.parts.push({
+          inlineData: { mimeType: attachment.mimeType, data: base64 },
+        })
+        console.log('[v0] Attachment added to Gemini request - mimeType:', attachment.mimeType, 'size:', base64.length)
+      }
+    }
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents,
+        }),
+      },
+    )
+    if (!res.ok) {
+      const detail = await res.text()
+      console.log('[v0] Gemini failed:', res.status, detail.slice(0, 100))
+      return null
+    }
+    const data = await res.json()
+    const text = data.candidates?.[0]?.content?.parts
+      ?.map((p: { text?: string }) => p.text ?? '')
+      .join('')
+    if (text) {
+      console.log('[v0] Gemini success - response length:', text.length)
+      return text
+    }
+    return null
+  } catch (err) {
+    console.log('[v0] Gemini error:', err instanceof Error ? err.message : 'Unknown error')
+    return null
+  }
+}
 
 async function callGemini(
   system: string,
   messages: IncomingMessage[],
   attachment?: ChatRequest['attachment'],
 ): Promise<string> {
-  const key = process.env.Google_Gemini_API_KEY
-  if (!key) throw new Error('missing-key:Gemini API key is not configured yet. Add it in Project Settings to enable live responses.')
+  // Try Gemini first, then fall back to Groq/OpenRouter
+  const content = await tryGemini(system, messages, attachment)
+  if (content) return content
 
-  console.log('[v0] Using Gemini 1.5 Flash - has attachment:', !!attachment)
-
-  const contents = messages.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }] as Array<
-      { text: string } | { inlineData: { mimeType: string; data: string } }
-    >,
-  }))
-
-  // Attach the resume/file to the latest user turn for Gemini to read.
-  if (attachment?.dataUrl) {
-    const base64 = attachment.dataUrl.split(',')[1] ?? ''
-    const last = contents[contents.length - 1]
-    if (last && base64) {
-      last.parts.push({
-        inlineData: { mimeType: attachment.mimeType, data: base64 },
-      })
-      console.log('[v0] Attachment added to Gemini request - mimeType:', attachment.mimeType, 'size:', base64.length)
-    }
+  // Fallback to general providers for Job Hunter/Developer mode
+  const fallback = await tryGroq(system, messages)
+  if (fallback) {
+    console.log('[v0] Gemini failed, using Groq as fallback')
+    return fallback
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents,
-      }),
-    },
-  )
-  if (!res.ok) {
-    const detail = await res.text()
-    console.log('[v0] Gemini error response:', res.status, detail.slice(0, 200))
-    throw new Error(`Gemini ${res.status}: ${detail.slice(0, 200)}`)
+  const fallback2 = await tryOpenRouter(system, messages)
+  if (fallback2) {
+    console.log('[v0] Gemini and Groq failed, using OpenRouter as fallback')
+    return fallback2
   }
-  const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts
-    ?.map((p: { text?: string }) => p.text ?? '')
-    .join('')
-  console.log('[v0] Gemini success - response length:', text?.length)
-  return text || 'No response generated.'
+
+  throw new Error('all-providers-failed')
 }
 
 /* --------------------------------- Handler -------------------------------- */
@@ -180,6 +245,18 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.log('[v0] Chat route error:', message)
+    
+    // All providers failed - return user-friendly message
+    if (message === 'all-providers-failed') {
+      return NextResponse.json(
+        {
+          error: 'Our AI service is experiencing high traffic. Please check back in a moment.',
+          isHighTraffic: true,
+        },
+        { status: 503 },
+      )
+    }
+
     if (message.startsWith('missing-key:')) {
       const which = message.split(':')[1]
       return NextResponse.json(
@@ -190,6 +267,15 @@ export async function POST(req: Request) {
         { status: 503 },
       )
     }
-    return NextResponse.json({ error: message }, { status: 500 })
+
+    // Generic server error - don't expose technical details to user
+    console.error('[v0] Unexpected error:', message)
+    return NextResponse.json(
+      {
+        error: 'Our AI service is experiencing high traffic. Please check back in a moment.',
+        isHighTraffic: true,
+      },
+      { status: 503 },
+    )
   }
 }
