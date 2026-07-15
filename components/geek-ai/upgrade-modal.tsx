@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { Check, Crown, Ticket, X } from 'lucide-react'
+import { Check, Crown, Ticket, X as XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useApp } from './app-provider'
 
@@ -55,7 +55,7 @@ export function UpgradeModal() {
           className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Close"
         >
-          <X className="size-4" />
+          <XIcon className="size-4" />
         </button>
 
         {/* header */}

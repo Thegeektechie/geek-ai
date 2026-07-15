@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Info, X } from 'lucide-react'
+import { CheckCircle2, Info, X as XIcon } from 'lucide-react'
 import { useApp } from './app-provider'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +30,7 @@ export function Toaster() {
             )}
             aria-label="Dismiss notification"
           >
-            <X className="size-3.5" />
+            <XIcon className="size-3.5" />
           </button>
         </div>
       ))}

@@ -8,11 +8,12 @@ import { GeekEmblem, GeekLogo } from './logo'
 import { PERSONAS } from '@/lib/geek-ai'
 
 export function AuthView() {
-  const { signIn, toast } = useApp()
+  const { signIn, signUp, toast } = useApp()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -20,18 +21,28 @@ export function AuthView() {
       toast('Please enter your email and password.')
       return
     }
+
     setLoading(true)
-    setTimeout(() => signIn(email.trim()), 700)
+    window.setTimeout(() => {
+      if (isSignUp) {
+        signUp(email.trim(), password)
+      } else {
+        signIn(email.trim(), password)
+      }
+      setLoading(false)
+    }, 500)
   }
 
   function handleGoogle() {
     setLoading(true)
-    setTimeout(() => signIn('geek.user@gmail.com'), 700)
+    window.setTimeout(() => {
+      signIn('geek.user@gmail.com', 'local-password')
+      setLoading(false)
+    }, 500)
   }
 
   return (
     <div className="flex min-h-dvh w-full">
-      {/* Brand panel */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-neutral-950 p-10 text-white lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -77,7 +88,6 @@ export function AuthView() {
         </p>
       </div>
 
-      {/* Form panel */}
       <div className="flex w-full flex-col items-center justify-center bg-background px-5 py-10 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
@@ -86,10 +96,12 @@ export function AuthView() {
 
           <div className="mb-7 space-y-1.5">
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Welcome back
+              {isSignUp ? 'Create your account' : 'Welcome back'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Sign in to continue to your Geek-AI workspace.
+              {isSignUp
+                ? 'Create a local account and keep your workspace on this device.'
+                : 'Sign in to continue to your Geek-AI workspace.'}
             </p>
           </div>
 
@@ -121,7 +133,7 @@ export function AuthView() {
                 <input
                   id="password"
                   type={showPw ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -154,7 +166,7 @@ export function AuthView() {
               disabled={loading}
               className="h-11 w-full rounded-xl text-sm"
             >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : 'Sign In'}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : isSignUp ? 'Create account' : 'Sign In'}
             </Button>
           </form>
 
@@ -177,13 +189,13 @@ export function AuthView() {
           </Button>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            {"Don't have an account? "}
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               type="button"
-              onClick={() => toast('Sign-up will be added soon.', 'info')}
+              onClick={() => setIsSignUp((value) => !value)}
               className="font-medium text-primary hover:underline"
             >
-              Create one
+              {isSignUp ? 'Sign in' : 'Create one'}
             </button>
           </p>
         </div>

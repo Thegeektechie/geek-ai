@@ -6,15 +6,21 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react'
-import { ArrowUp, Lock, Paperclip, X } from 'lucide-react'
+import { ArrowUp, Lock, Paperclip, X as XIcon } from 'lucide-react'
 import { getPersona } from '@/lib/geek-ai'
 import { useApp } from './app-provider'
 import { cn } from '@/lib/utils'
 
+interface AttachmentPayload {
+  name: string
+  dataUrl: string
+  mimeType: string
+}
+
 export function ChatInput() {
   const { persona, sendMessage, chatsRemaining, openUpgrade } = useApp()
   const [value, setValue] = useState('')
-  const [attachment, setAttachment] = useState<string | null>(null)
+  const [attachment, setAttachment] = useState<AttachmentPayload | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
@@ -56,7 +62,18 @@ export function ChatInput() {
 
   function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) setAttachment(file.name)
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setAttachment({
+        name: file.name,
+        dataUrl,
+        mimeType: file.type || 'application/octet-stream',
+      })
+    }
+    reader.readAsDataURL(file)
     e.target.value = ''
   }
 
@@ -94,14 +111,14 @@ export function ChatInput() {
         {attachment && (
           <div className="mb-2 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-card-foreground">
             <Paperclip className="size-3.5 text-muted-foreground" />
-            <span className="max-w-[220px] truncate">{attachment}</span>
+            <span className="max-w-[220px] truncate">{attachment.name}</span>
             <button
               type="button"
               onClick={() => setAttachment(null)}
               className="grid size-4 place-items-center rounded text-muted-foreground hover:text-foreground"
               aria-label="Remove attachment"
             >
-              <X className="size-3" />
+              <XIcon className="size-3" />
             </button>
           </div>
         )}
@@ -147,8 +164,7 @@ export function ChatInput() {
           </button>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Geek-AI can make mistakes. Model API keys connect soon for live
-          responses.
+          Geek-AI uses your selected persona to route requests to the most suitable model provider.
         </p>
       </div>
     </div>

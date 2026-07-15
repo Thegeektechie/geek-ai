@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Menu as MenuIcon, X } from 'lucide-react'
+import { Menu as MenuIcon, X as XIcon } from 'lucide-react'
 import { getPersona } from '@/lib/geek-ai'
 import { useApp } from './app-provider'
 import { Sidebar } from './sidebar'
@@ -128,7 +128,7 @@ export function ChatView() {
               className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent"
               aria-label="Close menu"
             >
-              <X className="size-5" />
+              <XIcon className="size-5" />
             </button>
             <Sidebar onNavigate={() => setMobileOpen(false)} />
           </div>
