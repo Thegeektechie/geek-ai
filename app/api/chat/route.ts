@@ -32,7 +32,34 @@ async function callOpenRouter(
 
   console.log('[v0] OpenRouter check - has key:', !!key, 'has groqKey:', !!groqKey)
 
-  // Prefer OpenRouter free Llama 3; fall back to Groq if only that is set.
+  // Prefer Groq for reliability (no rate limiting); fall back to OpenRouter if needed
+  if (groqKey) {
+    console.log('[v0] Using Groq with Llama 3.3-70b-versatile')
+    const res = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: system }, ...messages],
+        }),
+      },
+    )
+    if (!res.ok) {
+      const detail = await res.text()
+      console.log('[v0] Groq error response:', res.status, detail.slice(0, 200))
+      throw new Error(`Groq ${res.status}: ${detail.slice(0, 200)}`)
+    }
+    const data = await res.json()
+    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
+    console.log('[v0] Groq success - response length:', content.length)
+    return content
+  }
+
   if (key) {
     console.log('[v0] Using OpenRouter with Llama 3.3-70b')
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -56,33 +83,6 @@ async function callOpenRouter(
     const data = await res.json()
     const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
     console.log('[v0] OpenRouter success - response length:', content.length)
-    return content
-  }
-
-  if (groqKey) {
-    console.log('[v0] Using Groq with Llama 3.3-70b')
-    const res = await fetch(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${groqKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'system', content: system }, ...messages],
-        }),
-      },
-    )
-    if (!res.ok) {
-      const detail = await res.text()
-      console.log('[v0] Groq error response:', res.status, detail.slice(0, 200))
-      throw new Error(`Groq ${res.status}: ${detail.slice(0, 200)}`)
-    }
-    const data = await res.json()
-    const content = data.choices?.[0]?.message?.content ?? 'No response generated.'
-    console.log('[v0] Groq success - response length:', content.length)
     return content
   }
 
